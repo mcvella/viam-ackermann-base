@@ -85,7 +85,7 @@ class ackermann(Base, Reconfigurable):
         if steering_servo_rear != "":
             deps.append(steering_servo_rear)
 
-        LOGGER.error(deps)
+        LOGGER.info(deps)
         return deps
 
     # Handles attribute reconfiguration
@@ -99,7 +99,7 @@ class ackermann(Base, Reconfigurable):
         self.max_servo_position = config.attributes.fields["max_servo_position"].number_value or 180
         self.min_servo_position = config.attributes.fields["min_servo_position"].number_value or 0
 
-        LOGGER.error(dependencies)
+        LOGGER.info(dependencies)
         motors = config.attributes.fields["drive_motors"].list_value
         for m in motors:
             actual_motor = dependencies[Motor.get_resource_name(m)]
@@ -114,7 +114,7 @@ class ackermann(Base, Reconfigurable):
         else:
             self.has_front_servo = False
         
-        rear_servo = config.attributes.fields["steering_servo_front"].string_value or ""
+        rear_servo = config.attributes.fields["steering_servo_rear"].string_value or ""
         if rear_servo != "":
             actual_rear_servo = dependencies[Servo.get_resource_name(rear_servo)]
             self.rear_servo = cast(Servo, actual_rear_servo)
@@ -147,14 +147,13 @@ class ackermann(Base, Reconfigurable):
 
         drive_tasks = []
         for m in self.motors:
-            drive_tasks.append(m.set_power(drive_power))
+            drive_tasks.append(asyncio.create_task(m.set_power(drive_power)))
         await asyncio.gather(*drive_tasks)
     
         await asyncio.sleep(drive_sec)
         await self.stop()
 
     async def do_steer(self, position: int):
-        LOGGER.error(position)
         primary_servo = self.front_servo
         secondary_servo = ""
         if self.has_rear_servo:
@@ -163,18 +162,15 @@ class ackermann(Base, Reconfigurable):
             primary_servo = self.rear_servo
             if self.has_front_servo:
                 secondary_servo = self.front_servo
-
-        steer_tasks = []
-        steer_tasks.append(primary_servo.move(int(position)))
+        
+        await primary_servo.move(int(position))
 
         if self.steer_mode == 'all':
-            steer_tasks.append(secondary_servo.move(int(position)))
+            await secondary_servo.move(int(position))
         else:
             if secondary_servo != "":
-                steer_tasks.append(secondary_servo.move(int(self.neutral_servo_position)))
+                await secondary_servo.move(int(self.neutral_servo_position))
         
-        await asyncio.gather(*steer_tasks)
-
         return
     
     def servo_angle(self, val: float):
@@ -215,7 +211,7 @@ class ackermann(Base, Reconfigurable):
         await self.do_steer(self.servo_angle(angular.z))
         drive_tasks = []
         for m in self.motors:
-            drive_tasks.append(m.set_power(linear.y))
+            drive_tasks.append(asyncio.create_task(m.set_power(linear.y)))
         await asyncio.gather(*drive_tasks)
         
     async def set_velocity(
@@ -255,7 +251,7 @@ class ackermann(Base, Reconfigurable):
 
         drive_tasks = []
         for m in self.motors:
-            drive_tasks.append(m.set_power((linear.y / 1000) / self.properties.max_speed_meters_per_second))
+            drive_tasks.append(asyncio.create_task(m.set_power((linear.y / 1000) / self.properties.max_speed_meters_per_second)))
         await asyncio.gather(*drive_tasks)
     
     async def stop(
@@ -267,14 +263,14 @@ class ackermann(Base, Reconfigurable):
     ):
         stop_tasks = []
         for m in self.motors:
-            stop_tasks.append(m.stop())
+            stop_tasks.append(asyncio.create_task(m.stop()))
     
         await asyncio.gather(*stop_tasks)
     
     async def is_moving(self) -> bool:
         tasks = []
         for m in self.motors:
-            tasks.append(m.is_moving())
+            tasks.append(asyncio.create_task(m.is_moving()))
     
         results = await asyncio.gather(*tasks)
         for r in results:
