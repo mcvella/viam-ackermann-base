@@ -140,7 +140,7 @@ class ackermann(Base, Reconfigurable):
             return "cannot move base straight at 0 mm per sec"
         
         # move steering to neutral position
-        await self.do_steer(self.neutral_servo_position)
+        await self.do_steer(0)
 
         drive_sec = distance / velocity
         drive_power = (velocity/1000) / self.properties.max_speed_meters_per_second
@@ -156,20 +156,28 @@ class ackermann(Base, Reconfigurable):
     async def do_steer(self, position: int):
         primary_servo = self.front_servo
         secondary_servo = ""
+
+        angle = int(self.servo_angle(position))
+        secondary_angle = int(self.servo_angle(-position))
+
         if self.has_rear_servo:
             secondary_servo  = self.rear_servo
         if self.steer_mode == "rear":
             primary_servo = self.rear_servo
+            angle = int(self.servo_angle(-position))
+            secondary_angle = int(self.servo_angle(position))
+
             if self.has_front_servo:
                 secondary_servo = self.front_servo
         
-        await primary_servo.move(int(position))
+        await primary_servo.move(angle)
 
         if self.steer_mode == 'all':
-            await secondary_servo.move(int(position))
+            await secondary_servo.move(secondary_angle)
         else:
             if secondary_servo != "":
-                await secondary_servo.move(int(self.neutral_servo_position))
+                secondary_angle = int(self.servo_angle(0))
+                await secondary_servo.move(secondary_angle)
         
         return
     
@@ -208,7 +216,7 @@ class ackermann(Base, Reconfigurable):
         **kwargs,
     ):
         LOGGER.info(f"received a set_power with linear.X: {linear.x}, linear.Y: {linear.y} linear.Z: {linear.z}, angular.X: {angular.x}, angular.Y: {angular.y}, angular.Z: {angular.z}")
-        await self.do_steer(self.servo_angle(angular.z))
+        await self.do_steer(angular.z)
         drive_tasks = []
         for m in self.motors:
             drive_tasks.append(asyncio.create_task(m.set_power(linear.y)))
@@ -245,9 +253,9 @@ class ackermann(Base, Reconfigurable):
             if linear.y < 0:
                 turn_angle *= -1
             
-            await self.do_steer(self.servo_angle(turn_angle / self.max_servo_position))
+            await self.do_steer(turn_angle / self.max_servo_position)
         else:
-            await self.do_steer(self.neutral_servo_position)
+            await self.do_steer(0)
 
         drive_tasks = []
         for m in self.motors:
