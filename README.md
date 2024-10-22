@@ -12,7 +12,7 @@ _Add instructions here for any requirements._
 
 ## Build and run
 
-To use this module, follow the instructions to [add a module from the Viam Registry](https://docs.viam.com/registry/configure/#add-a-modular-resource-from-the-viam-registry) and select the `rdk:base:mcvella:base:ackermann` model from the [`mcvella:base:ackermann` module](https://app.viam.com/module/rdk/mcvella:base:ackermann).
+To use this module, follow the instructions to [add a module from the Viam Registry](https://docs.viam.com/registry/configure/#add-a-modular-resource-from-the-viam-registry) and select the `mcvella:base:ackermann` model from the [`mcvella:base:ackermann` module](https://app.viam.com/module/rdk/mcvella:base:ackermann).
 
 ## Configure your base
 
