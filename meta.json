@@ -1,0 +1,19 @@
+{
+  "$schema": "https://dl.viam.dev/module.schema.json",
+  "module_id": "mcvella:ackermann-base",
+  "visibility": "public",
+  "url": "https://github.com/mcvella/viam-ackermann-base",
+  "description": "A base model to control ackermann bases with Viam.  Supports front, rear, and all-wheel servo steering.",
+  "models": [
+    {
+      "api": "rdk:component:base",
+      "model": "mcvella:base:ackermann"
+    }
+  ],
+  "build": {
+    "build": "sh build.sh",
+    "path": "dist/archive.tar.gz",
+    "arch" : ["linux/arm64", "linux/amd64"]
+  },
+  "entrypoint": "dist/main"
+}
