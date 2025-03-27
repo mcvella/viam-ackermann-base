@@ -28,7 +28,8 @@ class ackermann(Base, Reconfigurable):
         wheelbase_mm: float
         turning_radius_meters: float
         max_speed_meters_per_second: float
-    
+        width_meters: float
+        wheel_circumference_meters: float
 
     MODEL: ClassVar[Model] = Model(ModelFamily("mcvella", "base"), "ackermann")
     
@@ -61,8 +62,14 @@ class ackermann(Base, Reconfigurable):
             raise Exception("A turning_radius_meters must be defined")
         max_speed_meters_per_second = config.attributes.fields["max_speed_meters_per_second"].number_value or 0
         if max_speed_meters_per_second == 0:
-            raise Exception("A max_speed_meters_per_second must be defined")
-        
+            raise Exception("A width_meters must be defined")
+        width_meters = config.attributes.fields["width_meters"].number_value or 0
+        if width_meters == 0:
+            raise Exception("A width_meters must be defined")
+        wheel_circumference_meters = config.attributes.fields["wheel_circumference_meters"].number_value or 0
+        if wheel_circumference_meters == 0:
+            raise Exception("A wheel_circumference_meters must be defined")
+                
         deps = []
         motors = config.attributes.fields["drive_motors"].list_value or []
         if len(motors) == 0:
@@ -94,6 +101,9 @@ class ackermann(Base, Reconfigurable):
         self.properties.wheelbase_mm = config.attributes.fields["wheelbase_mm"].number_value
         self.properties.turning_radius_meters = config.attributes.fields["turning_radius_meters"].number_value 
         self.properties.max_speed_meters_per_second = config.attributes.fields["max_speed_meters_per_second"].number_value
+        self.properties.width_meters = config.attributes.fields["width_meters"].number_value 
+        self.properties.wheel_circumference_meters = config.attributes.fields["wheel_circumference_meters"].number_value 
+
         self.steer_mode = config.attributes.fields["steer_mode"].string_value or "front"
         self.neutral_servo_position = config.attributes.fields["neutral_servo_position"].number_value or 90
         self.max_servo_position = config.attributes.fields["max_servo_position"].number_value or 180

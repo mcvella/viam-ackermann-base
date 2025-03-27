@@ -41,6 +41,8 @@ The following attributes are available for `rdk:base:mcvella:base:ackermann` bas
 | `wheelbase_mm` | float | **Required** |  The wheelbase measurement in mm. |
 | `turning_radius_meters` | float | **Required** |  The turning radius in meters. |
 | `max_speed_meters_per_second` | float | **Required** |  The max speed in meters per second. |
+| `width_meters` | float | **Required** |  The width of the base in meters. |
+| `wheel_circumference_meters` | float | **Required** |  The wheel circumference of the base in meters. |
 | `steering_servo_front` | string | Optional |  The name of a configured servo, required if steer_mode is front or all. |
 | `steering_servo_rear` | string | Optional |  The name of a configured servo, required if steer_mode is rear or all. |
 | `neutral_servo_position` | integer | Optional |  The neutral (straight) position in degrees for the steering servos, default 90. |

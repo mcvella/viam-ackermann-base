@@ -12,10 +12,10 @@ async def main():
     """This function creates and starts a new module, after adding all desired resources.
     Resources must be pre-registered. For an example, see the `__init__.py` file.
     """
-    Registry.register_resource_creator(Base.SUBTYPE, ackermann.MODEL, ResourceCreatorRegistration(ackermann.new, ackermann.validate))
+    Registry.register_resource_creator(Base.API, ackermann.MODEL, ResourceCreatorRegistration(ackermann.new, ackermann.validate))
 
     module = Module.from_args()
-    module.add_model_from_registry(Base.SUBTYPE, ackermann.MODEL)
+    module.add_model_from_registry(Base.API, ackermann.MODEL)
     await module.start()
 
 if __name__ == "__main__":
