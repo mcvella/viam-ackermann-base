@@ -24,7 +24,7 @@ class ackermann(Base, Reconfigurable):
     """
     Base represents a physical base of a robot.
     """
-    class Properties:
+    class Props:
         wheelbase_mm: float
         turning_radius_meters: float
         max_speed_meters_per_second: float
@@ -33,7 +33,7 @@ class ackermann(Base, Reconfigurable):
 
     MODEL: ClassVar[Model] = Model(ModelFamily("mcvella", "base"), "ackermann")
     
-    properties: Properties
+    properties: Props
     steer_mode: str = ""
     motors: List[Motor] = []
     front_servo: Servo
@@ -97,7 +97,7 @@ class ackermann(Base, Reconfigurable):
 
     # Handles attribute reconfiguration
     def reconfigure(self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]):
-        self.properties = self.Properties()
+        self.properties = self.Props()
         self.properties.wheelbase_mm = config.attributes.fields["wheelbase_mm"].number_value
         self.properties.turning_radius_meters = config.attributes.fields["turning_radius_meters"].number_value 
         self.properties.max_speed_meters_per_second = config.attributes.fields["max_speed_meters_per_second"].number_value
@@ -297,6 +297,7 @@ class ackermann(Base, Reconfigurable):
     
         return False
         
-    async def get_properties(self, *, timeout: Optional[float] = None, **kwargs) -> Properties:
-        return self.properties
+    async def get_properties(self, *, timeout: Optional[float] = None, **kwargs) -> Base.Properties:
+        return Base.Properties(width_meters=self.properties.width_meters, turning_radius_meters=self.properties.turning_radius_meters, wheel_circumference_meters=self.properties.wheel_circumference_meters)
+     
 
