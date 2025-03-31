@@ -246,13 +246,15 @@ class ackermann(Base, Reconfigurable):
         LOGGER.info(f"received a set_velocity with linear.X: {linear.x}, linear.Y: {linear.y} linear.Z: {linear.z}, angular.X: {angular.x}, angular.Y: {angular.y}, angular.Z: {angular.z}")
 
         if linear.y / 1000 > self.properties.max_speed_meters_per_second:
-            return f"requested speed {linear.y} is greater than maximum base speed {self.properties.max_speed_meters_per_second}"
+            self.logger.warning(f"requested speed {linear.y} is greater than maximum base speed {self.properties.max_speed_meters_per_second}")
+            return
 
         max_angle_velocity_rad = (linear.y / 1000) / self.properties.turning_radius_meters
         max_degs = abs(math.cos(math.radians(max_angle_velocity_rad)))
         if max_degs < abs(angular.z):
             max_degs = abs(math.cos(math.radians(max_angle_velocity_rad)))
-            return f"at requested speed of {linear.y} mm/s, a base with turning radius {self.properties.turning_radius_meters} m can turn at most {max_degs} degrees per second"
+            self.logger.warning(f"at requested speed of {linear.y} mm/s, a base with turning radius {self.properties.turning_radius_meters} m can turn at most {max_degs} degrees per second")
+            return
         	
         if angular.z != 0:
 		    # If we are here then requested lin/ang velocities are valid
