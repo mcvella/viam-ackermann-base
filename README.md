@@ -51,7 +51,7 @@ The following attributes are available for `rdk:base:mcvella:base:ackermann` bas
 | `max_servo_position` | integer | Optional |  The maximum position in degrees for the steering servos, default 180. |
 | `brake_servo` | string | Optional |  The name of a configured servo for braking. |
 | `brake_off_position` | integer | Optional |  The position in degrees for the brake servo when disengaged, default 0. |
-| `brake_on_position` | integer | Optional |  The position in degrees for the brake servo when engaged, default 60. |
+| `brake_on_position` | integer | Optional |  The position in degrees for the brake servo when engaged, default 90. |
 
 ### Brake Servo Functionality
 
@@ -77,6 +77,6 @@ This provides automatic braking functionality to prevent the vehicle from rollin
   "wheel_circumference_meters": 0.3,
   "brake_servo": "brake_servo1",
   "brake_off_position": 0,
-  "brake_on_position": 60
+  "brake_on_position": 90
 }
 ```

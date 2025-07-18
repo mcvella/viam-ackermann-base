@@ -46,7 +46,7 @@ class ackermann(Base, Reconfigurable):
     brake_servo: Optional[Servo] = None
     has_brake_servo: bool = False
     brake_off_position: int = 0
-    brake_on_position: int = 60
+    brake_on_position: int = 90
 
     # Constructor
     @classmethod
@@ -120,7 +120,7 @@ class ackermann(Base, Reconfigurable):
 
         # Initialize brake servo configuration
         self.brake_off_position = int(config.attributes.fields["brake_off_position"].number_value or 0)
-        self.brake_on_position = int(config.attributes.fields["brake_on_position"].number_value or 60)
+        self.brake_on_position = int(config.attributes.fields["brake_on_position"].number_value or 90)
 
         LOGGER.info(dependencies)
         motors = config.attributes.fields["drive_motors"].list_value
