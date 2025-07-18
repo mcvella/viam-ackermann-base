@@ -43,6 +43,10 @@ class ackermann(Base, Reconfigurable):
     neutral_servo_position: int
     max_servo_position: int
     min_servo_position: int
+    brake_servo: Optional[Servo] = None
+    has_brake_servo: bool = False
+    brake_off_position: int = 0
+    brake_on_position: int = 60
 
     # Constructor
     @classmethod
@@ -92,6 +96,11 @@ class ackermann(Base, Reconfigurable):
         if steering_servo_rear != "":
             deps.append(steering_servo_rear)
 
+        # Add brake servo to dependencies if defined
+        brake_servo_name = config.attributes.fields["brake_servo"].string_value or ""
+        if brake_servo_name != "":
+            deps.append(brake_servo_name)
+
         LOGGER.info(deps)
         return deps
 
@@ -105,14 +114,18 @@ class ackermann(Base, Reconfigurable):
         self.properties.wheel_circumference_meters = config.attributes.fields["wheel_circumference_meters"].number_value 
 
         self.steer_mode = config.attributes.fields["steer_mode"].string_value or "front"
-        self.neutral_servo_position = config.attributes.fields["neutral_servo_position"].number_value or 90
-        self.max_servo_position = config.attributes.fields["max_servo_position"].number_value or 180
-        self.min_servo_position = config.attributes.fields["min_servo_position"].number_value or 0
+        self.neutral_servo_position = int(config.attributes.fields["neutral_servo_position"].number_value or 90)
+        self.max_servo_position = int(config.attributes.fields["max_servo_position"].number_value or 180)
+        self.min_servo_position = int(config.attributes.fields["min_servo_position"].number_value or 0)
+
+        # Initialize brake servo configuration
+        self.brake_off_position = int(config.attributes.fields["brake_off_position"].number_value or 0)
+        self.brake_on_position = int(config.attributes.fields["brake_on_position"].number_value or 60)
 
         LOGGER.info(dependencies)
         motors = config.attributes.fields["drive_motors"].list_value
         for m in motors:
-            actual_motor = dependencies[Motor.get_resource_name(m)]
+            actual_motor = dependencies[Motor.get_resource_name(str(m))]
             motor = cast(Motor, actual_motor)
             self.motors.append(motor)
         
@@ -132,8 +145,27 @@ class ackermann(Base, Reconfigurable):
         else:
             self.has_rear_servo = False
 
+        # Initialize brake servo
+        brake_servo_name = config.attributes.fields["brake_servo"].string_value or ""
+        if brake_servo_name != "":
+            actual_brake_servo = dependencies[Servo.get_resource_name(brake_servo_name)]
+            self.brake_servo = cast(Servo, actual_brake_servo)
+            self.has_brake_servo = True
+        else:
+            self.has_brake_servo = False
+
         return
     
+    async def engage_brake(self):
+        """Engage the brake by moving servo to brake_on_position"""
+        if self.has_brake_servo and self.brake_servo is not None:
+            await self.brake_servo.move(self.brake_on_position)
+    
+    async def disengage_brake(self):
+        """Disengage the brake by moving servo to brake_off_position"""
+        if self.has_brake_servo and self.brake_servo is not None:
+            await self.brake_servo.move(self.brake_off_position)
+
     async def move_straight(
         self,
         distance: int,
@@ -151,7 +183,10 @@ class ackermann(Base, Reconfigurable):
         
         # move steering to neutral position
         await self.do_steer(0)
-
+        
+        # Disengage brake before moving
+        await self.disengage_brake()
+        
         drive_sec = distance / velocity
         drive_power = (velocity/1000) / self.properties.max_speed_meters_per_second
 
@@ -165,13 +200,13 @@ class ackermann(Base, Reconfigurable):
 
     async def do_steer(self, position: int):
         primary_servo = self.front_servo
-        secondary_servo = ""
+        secondary_servo: Optional[Servo] = None
 
         angle = int(self.servo_angle(position))
         secondary_angle = int(self.servo_angle(-position))
 
         if self.has_rear_servo:
-            secondary_servo  = self.rear_servo
+            secondary_servo = self.rear_servo
         if self.steer_mode == "rear":
             primary_servo = self.rear_servo
             angle = int(self.servo_angle(-position))
@@ -183,9 +218,10 @@ class ackermann(Base, Reconfigurable):
         await primary_servo.move(angle)
 
         if self.steer_mode == 'all':
-            await secondary_servo.move(secondary_angle)
+            if secondary_servo is not None:
+                await secondary_servo.move(secondary_angle)
         else:
-            if secondary_servo != "":
+            if secondary_servo is not None:
                 secondary_angle = int(self.servo_angle(0))
                 await secondary_servo.move(secondary_angle)
         
@@ -226,7 +262,17 @@ class ackermann(Base, Reconfigurable):
         **kwargs,
     ):
         LOGGER.info(f"received a set_power with linear.X: {linear.x}, linear.Y: {linear.y} linear.Z: {linear.z}, angular.X: {angular.x}, angular.Y: {angular.y}, angular.Z: {angular.z}")
-        await self.do_steer(angular.z)
+        
+        # Check if we should stop (zero power)
+        if linear.y == 0:
+            await self.stop()
+            return
+                    
+        await self.do_steer(int(angular.z))
+        
+        # Disengage brake before moving
+        await self.disengage_brake()
+        
         drive_tasks = []
         for m in self.motors:
             drive_tasks.append(asyncio.create_task(m.set_power(linear.y)))
@@ -245,6 +291,11 @@ class ackermann(Base, Reconfigurable):
         
         LOGGER.info(f"received a set_velocity with linear.X: {linear.x}, linear.Y: {linear.y} linear.Z: {linear.z}, angular.X: {angular.x}, angular.Y: {angular.y}, angular.Z: {angular.z}")
 
+        # Check if we should stop (zero velocity)
+        if linear.y == 0:
+            await self.stop()
+            return
+
         if linear.y / 1000 > self.properties.max_speed_meters_per_second:
             self.logger.warning(f"requested speed {linear.y} is greater than maximum base speed {self.properties.max_speed_meters_per_second}")
             return
@@ -255,7 +306,7 @@ class ackermann(Base, Reconfigurable):
             max_degs = abs(math.cos(math.radians(max_angle_velocity_rad)))
             self.logger.warning(f"at requested speed of {linear.y} mm/s, a base with turning radius {self.properties.turning_radius_meters} m can turn at most {max_degs} degrees per second")
             return
-        	
+                	
         if angular.z != 0:
 		    # If we are here then requested lin/ang velocities are valid
 		    # Took this "fancy math" from https://github.com/viam-labs/ackermann-pwm-base/blob/main/pwmbase/base.go
@@ -265,10 +316,13 @@ class ackermann(Base, Reconfigurable):
             if linear.y < 0:
                 turn_angle *= -1
             
-            await self.do_steer(turn_angle / self.max_servo_position)
+            await self.do_steer(int(turn_angle / self.max_servo_position))
         else:
             await self.do_steer(0)
 
+        # Disengage brake before moving
+        await self.disengage_brake()
+        
         drive_tasks = []
         for m in self.motors:
             drive_tasks.append(asyncio.create_task(m.set_power((linear.y / 1000) / self.properties.max_speed_meters_per_second)))
@@ -286,6 +340,9 @@ class ackermann(Base, Reconfigurable):
             stop_tasks.append(asyncio.create_task(m.stop()))
     
         await asyncio.gather(*stop_tasks)
+        
+        # Engage brake after stopping
+        await self.engage_brake()
     
     async def is_moving(self) -> bool:
         tasks = []
